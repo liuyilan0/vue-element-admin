@@ -22,6 +22,7 @@ export const constantRoutes = [
     component: () => import('@/views/404'),
     hidden: true
   },
+
   {
     path: '/',
     component: Layout,
@@ -40,63 +41,38 @@ export const constantRoutes = [
     redirect: '/book/create',
     children: [{
       path: '/book/create',
-      name: 'Book',
+      name: 'BookCreate',
       component: () => import('@/views/book/create'),
-      meta: { title: '添加图书', icon: 'table' }
+      meta: { title: '新增图书', icon: 'table' }
     }, {
       path: '/book/list',
-      name: 'Book',
+      name: 'BookList',
       component: () => import('@/views/book/list'),
       meta: { title: '图书列表', icon: 'tree' }
     }]
   },
-  {
-    path: '/example',
-    component: Layout,
-    redirect: '/example/table',
-    name: 'Example',
-    meta: { title: 'Example', icon: 'example' },
-    children: [
-      {
-        path: 'table',
-        name: 'Table',
-        component: () => import('@/views/table/index'),
-        meta: { title: 'Table', icon: 'table' }
-      },
-      {
-        path: 'tree',
-        name: 'Tree',
-        component: () => import('@/views/tree/index'),
-        meta: { title: 'Tree', icon: 'tree' }
-      }
-    ]
-  },
+  // 404 page must be placed at the end !!!
+  { path: '*', redirect: '/404', hidden: true }
+]
+
+/**
+ * asyncRoutes
+ * the routes that need to be dynamically loaded based on user roles
+ */
+export const asyncRoutes = [
   {
     path: '/form',
     component: Layout,
+    redirect: '/form/index',
+    meta: { title: '测试', icon: 'form', roles: ['admin'] },
     children: [
       {
-        path: 'index',
-        name: 'Form',
+        path: '/form/index',
         component: () => import('@/views/form/index'),
         meta: { title: 'Form', icon: 'form' }
       }
     ]
-  },
-
-  {
-    path: 'External Link',
-    component: Layout,
-    children: [
-      {
-        path: 'https://kindlymental.github.io',
-        meta: { title: 'github地址', icon: 'link' }
-      }
-    ]
-  },
-
-  // 404 page must be placed at the end !!!
-  { path: '*', redirect: '/404', hidden: true }
+  }
 ]
 
 const createRouter = () => new Router({

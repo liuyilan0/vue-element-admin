@@ -1,6 +1,6 @@
 <template>
   <div>
-    <detail :is-edit="false" />
+    <detail :is-edit="true" />
   </div>
 </template>
 
@@ -8,6 +8,7 @@
 import Detail from './components/Detail'
 
 export default {
+  name: 'BookEdit',
   components: {
     Detail
   },

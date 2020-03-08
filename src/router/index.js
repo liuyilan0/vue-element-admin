@@ -33,17 +33,30 @@ export const constantRoutes = [
       component: () => import('@/views/dashboard/index'),
       meta: { title: '首页', icon: 'dashboard' }
     }]
-  },
+  }
+]
+
+/**
+ * asyncRoutes
+ * the routes that need to be dynamically loaded based on user roles
+ */
+export const asyncRoutes = [
   {
     path: '/book',
-    meta: { title: '图书管理', icon: 'user' },
     component: Layout,
     redirect: '/book/create',
+    meta: { title: '图书管理', icon: 'user', roles: ['admin'] },
     children: [{
       path: '/book/create',
-      name: 'BookCreate',
+      name: 'create',
       component: () => import('@/views/book/create'),
       meta: { title: '新增图书', icon: 'table' }
+    }, {
+      path: '/book/edit',
+      name: 'BookEdit',
+      hidden: true,
+      component: () => import('@/views/book/edit'),
+      meta: { title: '编辑图书', icon: 'tree', activeMenu: '/book/list' }
     }, {
       path: '/book/list',
       name: 'BookList',
@@ -53,26 +66,6 @@ export const constantRoutes = [
   },
   // 404 page must be placed at the end !!!
   { path: '*', redirect: '/404', hidden: true }
-]
-
-/**
- * asyncRoutes
- * the routes that need to be dynamically loaded based on user roles
- */
-export const asyncRoutes = [
-  {
-    path: '/form',
-    component: Layout,
-    redirect: '/form/index',
-    meta: { title: '测试', icon: 'form', roles: ['admin'] },
-    children: [
-      {
-        path: '/form/index',
-        component: () => import('@/views/form/index'),
-        meta: { title: 'Form', icon: 'form' }
-      }
-    ]
-  }
 ]
 
 const createRouter = () => new Router({

@@ -1,14 +1,14 @@
 <template>
   <el-form ref="postForm" :model="postForm" :rules="rules">
     <sticky :class-name="'sub-navbar ' + postForm.status">
-      <el-button v-if="!isEdit" @click="showGuide">显示帮助</el-button>
-      <el-button v-loading="loading" type="success" style="margin-left:10px" @click="submitForm">{{ isEdit ? "编辑电子书":"新增电子书" }}</el-button>
+      <el-button v-if="!isEdit" style="font-size:13px;" @click="showGuide">显示帮助</el-button>
+      <el-button v-loading="loading" type="success" style="margin-left:10px; font-size:13px;" @click="submitForm">{{ isEdit ? "编辑电子书":"新增电子书" }}</el-button>
     </sticky>
     <div class="detail-container">
       <el-row>
         <Warning />
         <el-col :span="24">
-          <book-upload :file-list="fileList" :disbaled="isEdit" @onSuccess="onUploadSuccess" @onRemove="onUploadRemove" />
+          <book-upload :file-list="fileList" :disabled="isEdit" @onSuccess="onUploadSuccess" @onRemove="onUploadRemove" />
         </el-col>
         <el-col :span="24">
           <el-form-item prop="title">
@@ -75,7 +75,7 @@
           <el-row>
             <el-col :span="24">
               <el-form-item label="目录结构:" :label-width="labelWidth">
-                <div v-if="postForm.contents && postForm.contents.length > 0" class="content-wrapper">
+                <div v-if="postForm.contentsTree && postForm.contentsTree.length > 0" class="content-wrapper">
                   <el-tree :data="postForm.contentsTree" @node-click="onContentClick" />
                 </div>
                 <span v-else>暂无数据</span>
@@ -93,6 +93,7 @@ import Sticky from '../../../components/Sticky/index'
 import Warning from './Warning'
 import BookUpload from '../../../components/BookUpload/index'
 import MDinput from '../../../components/MDinput/index'
+import { bookGet, bookCreate, bookUpdate } from '@/api/book'
 
 // 规则字段映射
 const fields = {
@@ -124,7 +125,6 @@ export default {
       labelWidth: '100px',
       postForm: {
         // status: 'draft',
-        ebook_uri: ''
       },
       fileList: [],
       rules: {
@@ -134,7 +134,20 @@ export default {
       }
     }
   },
+  created() {
+    // 拿到编辑图书的参数
+    if (this.isEdit) {
+      const param = this.$route.params.fileName
+      this.getBookData(param)
+    }
+  },
   methods: {
+    // 请求图书信息
+    getBookData(param) {
+      bookGet(param).then(res => {
+        this.setData(res.data)
+      })
+    },
     setData(data) {
       const {
         title,
@@ -148,7 +161,10 @@ export default {
         cover,
         originalName,
         contents,
-        contentsTree
+        contentsTree,
+        fileName,
+        updateType,
+        url
       } = data
       this.postForm = {
         ...this.postForm,
@@ -163,31 +179,54 @@ export default {
         cover,
         originalName,
         contents,
-        contentsTree
+        contentsTree,
+        fileName,
+        updateType,
+        url
       }
+      this.fileList = [{ name: originalName || fileName, url }] // 书名信息
     },
     onUploadSuccess(data) {
       // 赋值
       this.setData(data)
     },
     onUploadRemove() {
-      // 赋空值
-      this.postForm = {}
+      this.setDefault()
     },
-    // 提交表单，上传电子书
+    // 上传电子书
     submitForm() {
+      // 操作成功提示
+      const onSuccess = (msg) => {
+        this.$notify({
+          title: '操作成功',
+          message: msg,
+          type: 'success',
+          duration: 2000
+        })
+        this.loading = false
+      }
+      // 提交表单
       if (!this.loading) {
         this.loading = true
         // 表单数据校验
         this.$refs.postForm.validate((valid, fields) => {
           if (valid) {
             const book = Object.assign({}, this.postForm) // 浅拷贝
-            delete book.contents
+            // delete book.contents
             delete book.contentsTree
             if (!this.isEdit) {
-              this.createBook()
+              bookCreate(book).then(res => {
+                onSuccess(res.msg)
+                this.setDefault()
+              }).catch(() => {
+                this.loading = false
+              })
             } else {
-              this.updateBook()
+              bookUpdate(book).then(res => {
+                onSuccess(res.msg)
+              }).catch(() => {
+                this.loading = false
+              })
             }
           } else {
             const msg = fields[Object.keys(fields)[0]][0].message
@@ -196,6 +235,12 @@ export default {
           }
         })
       }
+    },
+    // 全部赋初值
+    setDefault() {
+      this.postForm = {} // 表单
+      this.fileList = [] // 电子书文件
+      this.$refs.postForm.resetFields() // 重置表单
     },
     // 显示帮助
     showGuide() {
@@ -206,13 +251,6 @@ export default {
       if (data.text) {
         window.open(data.text)
       }
-    },
-    // 创建图书
-    createBook() {
-
-    },
-    // 编辑图书
-    updateBook() {
     }
   }
 }

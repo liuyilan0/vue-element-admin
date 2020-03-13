@@ -1,18 +1,26 @@
 import request from '@/utils/request'
 
-export function bookCreate(data) {
+export function bookCreate(book) {
   return request({
     url: '/book/create',
     method: 'post',
-    data
+    data: book
   })
 }
 
-export function bookUpdate(data) {
+export function bookGet(fileName) {
+  return request({
+    url: '/book/get',
+    method: 'get',
+    params: { fileName }
+  })
+}
+
+export function bookUpdate(book) {
   return request({
     url: '/book/update',
     method: 'post',
-    data
+    data: book
   })
 }
 

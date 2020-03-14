@@ -35,19 +35,20 @@ export function bookGetCategory() {
   })
 }
 
-// 获取电子书分类列表
-export function bookGetList() {
+// 获取电子书列表
+export function bookGetList(param) {
   return request({
     url: '/book/getList',
-    method: 'get'
+    method: 'get',
+    params: param
   })
 }
 
 // 删除电子书
-export function bookDelete(data) {
+export function bookDelete(book) {
   return request({
     url: '/book/delete',
     method: 'post',
-    data
+    data: book
   })
 }

@@ -32,7 +32,7 @@
           v-for="item in categoryList"
           :key="item.value"
           :label="item.label + '(' + item.num + ')'"
-          :value="item.value"
+          :value="item.label"
         />
       </el-select>
       <el-button
@@ -72,6 +72,7 @@
       fit
       highlight-current-row
       style="width: 100%"
+      :default-sort="defaultSort"
       @sort-change="sortChange"
     >
       <el-table-column
@@ -130,6 +131,25 @@
         </template>
       </el-table-column>
       <el-table-column
+        label="创建时间"
+        prop="createDt"
+        align="center"
+        width="120"
+      >
+        <template slot-scope="{ row: { createDt } }">
+          <span>{{ createDt | timeFilter }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column
+        label="创建人"
+        width="100"
+        align="center"
+      >
+        <template slot-scope="{ row: { createUser } }">
+          <span>{{ createUser | valueFilter }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column
         label="文件名"
         prop="fileName"
         width="100"
@@ -137,21 +157,13 @@
       />
       <el-table-column
         label="文件路径"
-        prop="rootFile"
         width="100"
         align="center"
-      />
-      <el-table-column
-        label="创建人"
-        prop="createUser"
-        width="100"
-        align="center"
-      />
-      <el-table-column
-        label="创建时间"
-        prop="createDt"
-        align="center"
-      />
+      >
+        <template slot-scope="{ row: { filePath } }">
+          <span>{{ filePath | valueFilter }}</span>
+        </template>
+      </el-table-column>
       <el-table-column
         label="操作"
         width="100"
@@ -160,12 +172,16 @@
       >
         <template slot-scope="{ row }">
           <el-button type="text" icon="el-icon-edit" @click="handleUpdate(row)" />
-          <el-button type="text" icon="el-icon-delete" @click="handleDelete(row)" />
+          <el-button type="text" icon="el-icon-delete" style="color:red" @click="handleDelete(row)" />
         </template>
       </el-table-column>
     </el-table>
     <pagination
-      :total="0"
+      v-show="total > 0"
+      :total="total"
+      :page.sync="listQuery.page"
+      :limit.sync="listQuery.pageSize"
+      @pagination="refresh"
     />
   </div>
 </template>
@@ -173,13 +189,22 @@
 <script>
 import Pagination from '@/components/Pagination/index'
 import waves from '@/directive/waves/waves'
-import { bookGetCategory, bookGetList } from '@/api/book'
+import { bookGetCategory, bookGetList, bookDelete } from '@/api/book'
+import { parseTime } from '@/utils/index'
 export default {
   components: {
     Pagination
   },
   directives: {
     waves
+  },
+  filters: {
+    valueFilter(value) {
+      return value || '无'
+    },
+    timeFilter(time) {
+      return time ? parseTime(time, '{y}-{m}-{d} {h}:{i}') : '无'
+    }
   },
   data() {
     return {
@@ -188,7 +213,9 @@ export default {
       listLoading: false, // 列表loading
       showCover: false, // 是否显示封面
       categoryList: [], // 分类列表
-      bookList: [] // 图书列表
+      bookList: [], // 图书列表
+      total: 0, // 总条数
+      defaultSort: {} // 排序
     }
   },
   mounted() {
@@ -198,18 +225,49 @@ export default {
   created() {
     this.parseQuery() // 初始化请求参数
   },
+  beforeRouteUpdate(to, from, next) {
+    if (to.path === from.path) {
+      const newQuery = Object.assign({}, to.query)
+      const oldQuery = Object.assign({}, from.query)
+      if (JSON.stringify(newQuery) !== JSON.stringify(oldQuery)) {
+        this.getBookList()
+      }
+    }
+    next()
+  },
   methods: {
+    // 解析请求参数
     parseQuery() {
+      const query = Object.assign({}, this.$route.query)
+      let sort = '+id'
       const listQuery = {
         page: 1,
         pageSize: 20,
-        sort: '+id'
+        sort
       }
-      this.listQuery = { ...listQuery, ...this.listQuery } // 合并对象
+      if (query) {
+        query.page && (query.page = +query.page)
+        query.pageSize && (query.pageSize = +query.pageSize)
+        query.sort && (sort = query.sort)
+      }
+      const sortSymbol = sort[0]
+      const sortColumn = sort.slice(1, sort.length)
+      this.defaultSort = {
+        prop: sortColumn,
+        order: sortSymbol === '+' ? 'ascending' : 'descending'
+      }
+      this.listQuery = { ...listQuery, ...query } // 合并对象 query覆盖listQuery
     },
-    // 查询电子书列表
+    refresh() {
+      this.$router.push({
+        path: '/book/list',
+        query: this.listQuery
+      })
+    },
+    // 处理路由参数修改
     handleFilter(e) {
-      this.getBookList()
+      this.listQuery.page = 1 // 重置页码
+      this.refresh()
     },
     // 新增电子书
     handleCreate() {
@@ -229,7 +287,6 @@ export default {
     sortChange(data) {
       const { prop, order } = data
       this.sortBy(prop, order)
-      this.getBookList()
     },
     sortBy(prop, order) {
       if (order === 'ascending') {
@@ -237,13 +294,15 @@ export default {
       } else {
         this.listQuery.sort = `-${prop}` // 降序
       }
+      this.handleFilter()
     },
     // 获取电子书列表
     getBookList() {
       this.listLoading = true
       bookGetList(this.listQuery).then((res) => {
-        const { bookList } = res.data
+        const { bookList, count } = res.data
         this.bookList = bookList
+        this.total = count
         this.listLoading = false
         // 新增高亮提示的文本
         this.bookList.forEach(book => {
@@ -268,8 +327,22 @@ export default {
       this.$router.push(`/book/edit/${row.fileName}`)
     },
     // 删除某行
-    handleDelete() {
-
+    handleDelete(row) {
+      this.$confirm('此操作将永久删除该电子书，是否继续？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        bookDelete(row.fileName).then((res) => {
+          this.$notify({
+            title: '提示',
+            message: res.msg || '删除成功',
+            type: 'success',
+            duration: 2000
+          })
+          this.handleFilter()
+        })
+      })
     }
   }
 }

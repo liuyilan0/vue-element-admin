@@ -45,10 +45,10 @@ export function bookGetList(param) {
 }
 
 // 删除电子书
-export function bookDelete(book) {
+export function bookDelete(fileName) {
   return request({
     url: '/book/delete',
-    method: 'post',
-    data: book
+    method: 'get',
+    params: { fileName }
   })
 }
